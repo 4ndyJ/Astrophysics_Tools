@@ -3,7 +3,8 @@ for a given JWST raw image, the data set for the science target or the reference
 The two biggest factors are the spectral type (which for the MIRI instrument is less of a problem since this is in the releigh-jeans tail of the SED), and the number of groups in the itegration.
 Matching the brightness/counts in the two images can be done as shown:
 '''
-
+from astropy.io import fits
+import numpy as np
 def FindNumGroups(RefPath,SciPath,IsSciBrighter,KernelPix=15,Method="Summed"):
 	'''
  		Inputs:
