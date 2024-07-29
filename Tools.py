@@ -20,3 +20,16 @@ def Contrast_To_Magnitude(Star,Instrument,Filter,SEDFile,Cons):
     mstar,_ = starphot.get_stellar_magnitudes(SEDFile,Spectral_Type,Instrument)
     ConsAbsMag=mstar[Filter]-2.5*np.log10(Cons) #this is the only line Im not confident in. 
     return ConsAbsMag
+
+
+def Ballesteros(B,V):
+    '''
+    Returns an approximation for the temperature of an object in Kelvin, given its B and V magnitudes
+    Inputs
+    B (float): B magnitude
+    V (float); V magnitude
+
+    returns:
+    Calculated Temperature (K)
+    '''
+    return 4600*(1/(0.92*(B-V)+1.7)+1/(0.92*(B-V)+0.62))
