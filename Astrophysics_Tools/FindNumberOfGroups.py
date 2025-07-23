@@ -6,7 +6,7 @@ Matching the brightness/counts in the two images can be done as shown:
 from astropy.io import fits
 import numpy as np
 
-def FindNumGroups(RefPath, SciPath, IsSciBrighter, KernelPix=15, Method="Summed"):
+def FindNumGroups(RefPath, SciPath, IsSciBrighter, KernelPix=15, Method="Summed", verbose=True):
     '''
     Inputs:
         RefPath (Str) : the file path to A reference image.
@@ -62,7 +62,9 @@ def FindNumGroups(RefPath, SciPath, IsSciBrighter, KernelPix=15, Method="Summed"
                 minimized = SubtractedCube
         elif Method == "MaxPixel":
             if np.nanmax(SciCubeCrop) < np.nanmax(RefCubeCrop):  # when any pixel's counts is larger than any pixels count, then return that image
-                print(f"Optimized Groups using {Method} is: {i}")
+                if verbose:
+                    print(f"Optimized Groups using {Method} is: {i}")
                 return i
-    print(f"Optiimized Groups using {Method} is: {minimizedGroups}")
+    if verbose:
+        print(f"Optiimized Groups using {Method} is: {minimizedGroups}")
     return minimizedGroups  # return frame that minimizes the total flux
