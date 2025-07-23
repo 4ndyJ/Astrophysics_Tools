@@ -10,3 +10,13 @@ Please consider if the models presented here are what are required! If in doubt,
 Current models included are:
   1) ATMO 2020 - a model set from Phillips et al. (2020) [http://perso.ens-lyon.fr/isabelle.baraffe/ATMO2020/]
 
+
+
+## Download Instructions
+Clone the repo (`git clone https://github.com/4ndyJ/Astrophysics_Tools`) into an environment you like (bear in mind the dependencies may differ from other packages you have)
+
+cd into the directory (`cd /dir/where/you/saved/the/clone/`)
+
+install via pip (`pip install -e .`), the directory above acts as the directory for the package (No need to move into site-pacakges)
+
+
