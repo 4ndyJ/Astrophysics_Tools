@@ -6,7 +6,7 @@ Matching the brightness/counts in the two images can be done as shown:
 from astropy.io import fits
 import numpy as np
 
-def FindNumGroups(RefPath, SciPath, IsSciBrighter, KernelPix=15, Method="Summed", verbose=True):
+def FindNumGroups(RefPath, SciPath, IsSciBrighter, KernelPix=15, Method="Summed", verbose=True, error_handling = None):
     '''
     Inputs:
         RefPath (Str) : the file path to A reference image.
@@ -26,19 +26,24 @@ def FindNumGroups(RefPath, SciPath, IsSciBrighter, KernelPix=15, Method="Summed"
                                             # could be brighter, SpaceKLIP allows for the selection Sci or Ref images to be cropped in this way
                                             # so just swap around the Refpath and SciPath, and code works fine
 
-    hdul_Ref = fits.open(RefPath)
-    hdul_Sci = fits.open(SciPath)
+    with fits.open(RefPath) as hdul_Ref:
+        Reference_header = hdul_Ref["SCI"].header # type: ignore
+        Reference_data = hdul_Ref["SCI"].data   # type: ignore
+
+    with fits.open(SciPath) as hdul_Sci:
+        Science_header = hdul_Sci["SCI"].header # type: ignore
+        Science_data = hdul_Sci["SCI"].data   # type: ignore
 
     integration_Ref = 0  # Just chose the first integration. THis could be changed?
     integration_Sci = 0
 
-    group_Ref = int(hdul_Ref["SCI"].header["NAXIS3"])  # How many total groups are there?
-    group_Sci = int(hdul_Sci["SCI"].header["NAXIS3"])
+    group_Ref = int(Reference_header["NAXIS3"])  # How many total groups are there?
+    group_Sci = int(Science_header["NAXIS3"])
 
-    Cx = int(hdul_Ref["SCI"].header["CRPIX1"])  # Centre pix location for image (centred on PSF not frame)
-    Cy = int(hdul_Ref["SCI"].header["CRPIX2"])
+    Cx = int(Reference_header["CRPIX1"])  # Centre pix location for image (centred on PSF not frame)
+    Cy = int(Reference_header["CRPIX2"])
 
-    SciCube = hdul_Sci["SCI"].data[integration_Sci, group_Sci - 1]  # Load the Science Cube
+    SciCube = Science_data[integration_Sci, group_Sci - 1]  # Load the Science Cube
 
     SciCubeCrop = SciCube[(Cy - KernelPix):(Cy + KernelPix), (Cx - KernelPix):(Cx + KernelPix)]  # Crop it around the central PSF
     if "Nan" in Method:
@@ -49,7 +54,7 @@ def FindNumGroups(RefPath, SciPath, IsSciBrighter, KernelPix=15, Method="Summed"
     minimized = None
 
     for i in range(group_Ref):
-        RefCube = hdul_Ref["SCI"].data[integration_Ref, i]  # load cube
+        RefCube = Reference_data[integration_Ref, i]  # load cube
         RefCubeCrop = RefCube[(Cy - KernelPix):(Cy + KernelPix), (Cx - KernelPix):(Cx + KernelPix)]  # crop it
         if "Summed" in Method:
             if "Nan" in Method:

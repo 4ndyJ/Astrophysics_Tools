@@ -1,8 +1,11 @@
 import glob
 import os
 from astropy.io import fits
+import numpy as np
+import re
+import subprocess
 
-def Find_File_Types(init_path, file_types = ["Background", "Science", "Reference","TA"], verbose = True):
+def Find_File_Types(init_path, file_types = ["Background", "Science", "Reference", "TA"], verbose = True):
 	'''Finds all the files of specified types in a directory and returns them as lists.'''
 	def Find_Backgrounds(fits_files):
 		'''
@@ -73,7 +76,7 @@ def Find_File_Types(init_path, file_types = ["Background", "Science", "Reference
 				_target_acquisition_files.append(fits_file)
 		return _target_acquisition_files
 	
-	
+
 	fits_files = glob.glob(os.path.join(init_path, '*.fits'))
 	for file_type in file_types:
 		if file_type == "Background":
@@ -98,3 +101,47 @@ def Find_File_Types(init_path, file_types = ["Background", "Science", "Reference
 
 	# Return all found files
 	return locals().get('background_files', []), locals().get('science_files', []), locals().get('reference_files', []), locals().get('target_acquisition_files', [])
+
+
+def Get_Contrast_Separation_From_Calcon(calcon_dir, differential_imaging_method = "ADI+RDI", 
+										number_of_annuli = 1, number_of_subsections = 1, 
+										include_transmistion_mask = True, verbose = True):
+	'''
+	Extracts contrast and separation data from a calcon file.
+	Args:
+		calcon_dir (str): The directory containing the calcon file.
+		differential_imaging_method (str): The differential imaging method used.
+		number_of_annuli (int): The number of annuli used in the analysis.
+		number_of_subsections (int): The number of subsections used in the analysis.
+		include_transmistion_mask (bool): Whether to include the transmission mask in the analysis.
+		verbose (bool): Whether to print verbose output.
+	Returns:
+		tuple: A tuple containing the contrast and separation data.
+	'''
+
+	#find the files
+	glob_path = f"{calcon_dir}/{differential_imaging_method}_NANNU{number_of_annuli}_NSUBS{number_of_subsections}*-KLmodes-all_cal_"
+	if include_transmistion_mask:
+		contrast_path = glob.glob(glob_path + "maskcons.npy")[0]
+	else:
+		contrast_path = glob.glob(glob_path + "cons.npy")[0]
+	if verbose:
+		print(f"loading {contrast_path}")
+
+	separation_arcsec_path = glob.glob(glob_path + "seps.npy")[0]
+	if verbose:
+		print(f"loading {separation_arcsec_path}")
+	
+	
+	#load the data
+	contrast = np.load(contrast_path)
+	separation_arcsec = np.load(separation_arcsec_path)
+	
+	#find the KL modes:
+	injection_file = glob.glob(f"{calcon_dir}/{differential_imaging_method}_NANNU{number_of_annuli}_NSUBS{number_of_subsections}*/*.fits")[0]
+	header = fits.getheader(injection_file)
+	klmode_keys = [key for key in header if re.match(r"KLMODE\d+$",key)]
+	klmode_values = [header[key] for key in klmode_keys]
+
+	return contrast, separation_arcsec, klmode_values
+

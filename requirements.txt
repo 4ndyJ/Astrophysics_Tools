@@ -4,3 +4,5 @@ numpy
 glob
 pandas
 os
+inspect 
+functools
