@@ -10,9 +10,9 @@ from astroquery.mast import Observations
 
 #Type hints
 from .Function_Tools import enforce_types
-from typing import cast, Callable
+from typing import cast, Callable, Optional
 
-
+import warnings
 
 
 
@@ -107,14 +107,16 @@ def get_observations(target_name: str, instrument: str = "JWST") -> table.Table:
     query = Simbad()
     result = query.query_object(target_name)
     if result is None:
-        print(f"Target '{target_name}' not found in SIMBAD.")
-        return table.Table()
+        raise ValueError(f"Target '{target_name}' not found in SIMBAD.")
+    
     target_name = result['main_id'][0]
 
-    
-    if instrument.upper() not in Observations.list_missions():
+    instrument = instrument.upper()
+    if instrument != "ALL" and instrument not in Observations.list_missions():
         raise ValueError(f"Instrument \"{instrument}\" is not supported.\n\
-                         Supported instruments are:\n {Observations.list_missions()}")
+                        Supported instruments are:\n {Observations.list_missions()}")
+    if instrument == "ALL":
+        instrument = "*"
 
     obs_table = Observations.query_criteria(objectname=target_name, obs_collection=instrument) # type: ignore
 
@@ -125,13 +127,18 @@ def get_observations(target_name: str, instrument: str = "JWST") -> table.Table:
 
 
 def get_observed_filters_from_mast(target_name: str, instrument: str = "JWST") -> list[str]:
+    if instrument.upper() == "ALL":
+        warnings.warn("Filter strings between instruments differ, please be careful when parsing further.", UserWarning)
 
     obs_table = get_observations(target_name = target_name, instrument = instrument)
+
+    # filters = set(obs_table["filters"].astype(str)) #type: ignore
+    filters = set(str(filt) for filt in obs_table["filters"]) 
     
-    filters = set(obs_table["filters"]) #type: ignore
-    filter_names = set()
     if instrument.upper() != "JWST":
-        return list(filters) 
+        return list(filters)
+
+    filter_names = set()
     for filt in filters:
         filter_name, pupil_mask = filt.split(';')
         filter_names.add(filter_name)
