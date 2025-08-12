@@ -100,7 +100,11 @@ def Find_File_Types(init_path, file_types = ["Background", "Science", "Reference
 				print(f"Unknown file type: {file_type}")
 
 	# Return all found files
-	return locals().get('background_files', []), locals().get('science_files', []), locals().get('reference_files', []), locals().get('target_acquisition_files', [])
+	returns_dict = {"Background": locals().get('background_files', []),
+					"Science": locals().get('science_files', []),
+					"Reference": locals().get('reference_files', []),
+					"TA": locals().get('target_acquisition_files', [])}
+	return returns_dict
 
 
 def Get_Contrast_Separation_From_Calcon(calcon_dir, differential_imaging_method = "ADI+RDI", 

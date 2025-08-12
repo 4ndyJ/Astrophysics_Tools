@@ -1,77 +1,55 @@
-from astropy.io import fits
+
 # from spaceKLIP import starphot
 import numpy as np
-from astroquery.simbad import Simbad
+import astropy
 import astropy.units as u
+from astropy.io import fits
+from astropy.table import table
+from astroquery.simbad import Simbad
+from astroquery.mast import Observations
 from astropy.coordinates import SkyCoord
+
 from .Function_Tools import enforce_types
 
 
-# def Contrast_To_Magnitude(Star,Instrument,Filter,SEDFile,Cons):
-#     try:
-#         Simbad.query_object(Star)["SP_TYPE"]
-#     except:
-#         Simbad.add_votable_fields("sptype")
-#     Spectral_Type=Simbad.query_object(Star)["SP_TYPE"]
-#     mstar,_ = starphot.get_stellar_magnitudes(SEDFile,Spectral_Type,Instrument)
-#     ConsAbsMag=mstar[Filter]-2.5*np.log10(Cons) #this is the only line Im not confident in. 
-#     return ConsAbsMag
-
-
 def Ballesteros(B,V):
-    '''
-    Returns an approximation for the temperature of an object in Kelvin, given its B and V magnitudes
-    Inputs
-    B (float): B magnitude
-    V (float); V magnitude
-
-    returns:
-    Calculated Temperature (K)
-    '''
     return 4600*(1/(0.92*(B-V)+1.7)+1/(0.92*(B-V)+0.62))
 
 
-def arcsecond_separation_between_two_objects(Object1, Object2):
-    '''
-    Returns the separation of two objects in arcseconds
-    Inputs
-    Object1 (Str): Simbad Queriable Object
-    Object2 (Str): Simbad Queriable Object
+def arcsecond_separation_between_two_objects(Object1: str, Object2: str) -> float:
 
-    Returns:
-    separation (float: u.arcsecond): Separation in arcseconds with astropy unit arcsecond
-    '''
-
+    if Object1 is None or Object2 is None:
+        raise ValueError("Both Object1 and Object2 must be provided.")
     Simbad_Query = Simbad()
 
-    binary1_data = Simbad_Query.query_object(Object1) 
-    ra1 = binary1_data['RA'][0]  # Right Ascension
-    dec1 = binary1_data['DEC'][0]  # Declination
+    ra_str = "RA" if astropy.__version__ <= '0.4.7' else "ra"
+    dec_str = "DEC" if astropy.__version__ <= '0.4.7' else "dec"
 
-    binary2_data = Simbad_Query.query_object(Object2)  
-    ra2 = binary2_data['RA'][0]  # Right Ascension
-    dec2 = binary2_data['DEC'][0]  # Declination
+
+    binary1_data = Simbad_Query.query_object(Object1) 
+    if binary1_data is None or len(binary1_data) == 0:
+        raise ValueError(f"Could not retrieve data for {Object1}")
+    
+    ra1 = binary1_data[ra_str][0]  # Right Ascension
+    dec1 = binary1_data[dec_str][0]  # Declination
+
+    binary2_data = Simbad_Query.query_object(Object2) 
+    if binary2_data is None or len(binary2_data) == 0:
+        raise ValueError(f"Could not retrieve data for {Object2}")
+    
+    ra2 = binary2_data[ra_str][0]  # Right Ascension
+    dec2 = binary2_data[dec_str][0]  # Declination
 
     # Convert RA and Dec to SkyCoord object 
     coord1 = SkyCoord(ra=ra1, dec=dec1, unit=(u.hourangle, u.deg)) # type: ignore - astropy coordinates are not type checked by code editor
     coord2 = SkyCoord(ra=ra2, dec=dec2, unit=(u.hourangle, u.deg)) # type: ignore - astropy coordinates are not type checked by code editor
 
     # Calculate the separation in arcseconds
-    separation = coord1.separation(coord2).arcsecond
+    separation = coord1.separation(coord2).to(u.arcsecond).value #type: ignore - astropy coordinates are not type checked by code editor
     return separation
 
 def Convert_Between_Arcsec_and_AU(distance_pc=None, separation_arcsec=None, separation_au=None):
-    '''
-    Converts between arcsecond separation and Astronomical Units (AU) based on distance in parsecs.
-    
-    Inputs:
-        distance_pc (float): Distance in parsecs
-        sep_arcsec (float, optional): Separation in arcseconds. If provided, separation_au will be calculated.
-        sep_au (float, optional): Separation in AU. If provided, sep_arcsec will be calculated.
 
-    Returns:
-        float: Either the separation in arcseconds or AU, depending on the input provided.
-    '''
     def Arcsec_to_AU(_separation_arcsec, _distance_pc):
         return _separation_arcsec * _distance_pc
 
@@ -87,39 +65,17 @@ def Convert_Between_Arcsec_and_AU(distance_pc=None, separation_arcsec=None, sepa
     
 
 def Wiens_Law_Microns(temperature_K):
-    '''
-    Returns the wavelength of peak emission for a black body at a given temperature using Wien's Law.
-    
-    Inputs:
-        Temperature (float): Temperature in Kelvin
-    Returns:
-        float: Wavelength in microns (um)
-    '''
     b = 2.8977729e-3  # Wien's displacement constant in m*K
     return b / temperature_K * 1e6  # Convert to microns
 
 
 @enforce_types
 def Cookie_Cutter_Mask(data: np.ndarray, mask: np.ndarray) -> np.ndarray:
-    """
-    A mask of the same shape as the data is applied to the data
-    There are strict requirements on the mask type:
-        - The mask must be a binary mask
-            - 1s indicate the region to keep, 0s indicate the region to mask
-            - if the mask is not binary, values above 0 are treated as 1s, all other values (invluding NaNs) are treated as 0s
-        - the masked region must have a defined shape (e.g., circular, rectangular)
-            - i.e., after application of the mask, the data should still be a 2D array
-    Parameters:
-        data (np.ndarray): The data to be masked.
-        mask (np.ndarray): The binary mask to be applied to the data.
-    Returns:
-        np.ndarray: The masked data.
-    """
+
     if data.shape != mask.shape:
         raise ValueError("Data and mask must have the same shape.")
     if data.ndim != 2 or mask.ndim != 2:
         raise ValueError("Data and mask must be 2D arrays.")
-
 
     mask = np.where(mask > 0, 1, 0)  # Convert to binary mask, deals with NaNs aswell
 
@@ -137,4 +93,42 @@ def Cookie_Cutter_Mask(data: np.ndarray, mask: np.ndarray) -> np.ndarray:
     masked_applied_data = cut_out_data * cut_out_mask
 
     return masked_applied_data
+
+
+
+def get_observations(target_name: str, instrument: str = "JWST") -> table.Table:
+    query = Simbad()
+    result = query.query_object(target_name)
+    if result is None:
+        print(f"Target '{target_name}' not found in SIMBAD.")
+        return table.Table()
+    target_name = result['main_id'][0]
+    # Query MAST for JWST observations
+
+    if instrument.upper() not in Observations.list_missions(): # << need a pyi file for this?
+        print(f"Instrument {instrument} is not supported. Only JWST is currently supported.")
+        return table.Table()
+    obs_table = Observations.query_criteria(objectname=target_name, obs_collection=instrument) #type: ignore
+
+    if len(obs_table) == 0:
+        print(f"No JWST observations found for {target_name}.")
+        return table.Table()
+    return obs_table
+
+
+def get_observed_filters_from_mast(target_name: str, instrument: str = "JWST") -> list[str]:
+
+    if instrument.upper() != "JWST":
+        print(f"Instrument {instrument} is not supported. Only JWST is currently supported.")
+        return []
+
+    obs_table = get_observations(target_name = target_name, instrument = instrument)
+
+    filters = set(obs_table["filters"])
+    filter_names = set()
+    for filt in filters:
+        filter_name, pupil_mask = filt.split(';')
+        filter_names.add(filter_name)
+    
+    return sorted(list(filter_names))
 
