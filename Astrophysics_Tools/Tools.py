@@ -1,15 +1,19 @@
-
-# from spaceKLIP import starphot
 import numpy as np
+
 import astropy
 import astropy.units as u
-from astropy.io import fits
-from astropy.table import table
-from astroquery.simbad import Simbad
-from astroquery.mast import Observations
+from astropy import table
 from astropy.coordinates import SkyCoord
 
+from astroquery.simbad import Simbad
+from astroquery.mast import Observations
+
+#Type hints
 from .Function_Tools import enforce_types
+from typing import cast, Callable
+
+
+
 
 
 def Ballesteros(B,V):
@@ -97,18 +101,22 @@ def Cookie_Cutter_Mask(data: np.ndarray, mask: np.ndarray) -> np.ndarray:
 
 
 def get_observations(target_name: str, instrument: str = "JWST") -> table.Table:
+    # Recast functions that dont support type hints
+    Observations.list_missions = cast(Callable[[], list[str]], Observations.list_missions)
+
     query = Simbad()
     result = query.query_object(target_name)
     if result is None:
         print(f"Target '{target_name}' not found in SIMBAD.")
         return table.Table()
     target_name = result['main_id'][0]
-    # Query MAST for JWST observations
 
-    if instrument.upper() not in Observations.list_missions(): # << need a pyi file for this?
-        print(f"Instrument {instrument} is not supported. Only JWST is currently supported.")
-        return table.Table()
-    obs_table = Observations.query_criteria(objectname=target_name, obs_collection=instrument) #type: ignore
+    
+    if instrument.upper() not in Observations.list_missions():
+        raise ValueError(f"Instrument \"{instrument}\" is not supported.\n\
+                         Supported instruments are:\n {Observations.list_missions()}")
+
+    obs_table = Observations.query_criteria(objectname=target_name, obs_collection=instrument) # type: ignore
 
     if len(obs_table) == 0:
         print(f"No JWST observations found for {target_name}.")
@@ -118,17 +126,15 @@ def get_observations(target_name: str, instrument: str = "JWST") -> table.Table:
 
 def get_observed_filters_from_mast(target_name: str, instrument: str = "JWST") -> list[str]:
 
-    if instrument.upper() != "JWST":
-        print(f"Instrument {instrument} is not supported. Only JWST is currently supported.")
-        return []
-
     obs_table = get_observations(target_name = target_name, instrument = instrument)
-
-    filters = set(obs_table["filters"])
+    
+    filters = set(obs_table["filters"]) #type: ignore
     filter_names = set()
+    if instrument.upper() != "JWST":
+        return list(filters) 
     for filt in filters:
         filter_name, pupil_mask = filt.split(';')
         filter_names.add(filter_name)
-    
+        
     return sorted(list(filter_names))
 

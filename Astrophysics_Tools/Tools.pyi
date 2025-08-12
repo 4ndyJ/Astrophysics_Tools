@@ -66,5 +66,29 @@ def Cookie_Cutter_Mask(data: np.ndarray, mask: np.ndarray) -> np.ndarray:
         np.ndarray: The masked data.
     """
     ...
-def get_observations(target_name: str, instrument: str = "JWST") -> table.Table: ...
-def get_observed_filters_from_mast(target_name: str, instrument: str = "JWST") -> list[str]: ...
+def get_observations(target_name: str, instrument: str = "JWST") -> table.Table:
+    '''
+    Retrieves the observations for a given target from the MAST database.
+
+    Parameters:
+        target_name (str): The name of the target object.
+        instrument (str): The name of the instrument used for observations (default is "JWST").
+
+    Returns:
+        table.Table: A astropy table containing the observations for the target.
+    '''
+    ...
+def get_observed_filters_from_mast(target_name: str, instrument: str = "JWST") -> list[str]:
+    '''
+    Retrieves the observed filters for a given target from the MAST database.
+    Calls get_observations()
+
+    Parameters:
+        target_name (str): The name of the target object.
+        instrument (str): The name of the instrument used for observations (default is "JWST").
+    
+    Returns:
+        list[str]: A list of observed filter names.
+    '''
+    ...
+
